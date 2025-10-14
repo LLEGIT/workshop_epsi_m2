@@ -1,0 +1,38 @@
+{
+    "id": null,
+    "title": "Datalake Performance (Cassandra + Elasticsearch)",
+    "schemaVersion": 36,
+    "version": 1,
+    "panels": [
+        {
+            "type": "graph",
+            "title": "Cassandra Read Latency",
+            "targets": [
+                {
+                    "expr": "cassandra_read_latency",
+                    "legendFormat": "{{instance}}"
+                }
+            ]
+        },
+        {
+            "type": "graph",
+            "title": "Elasticsearch Index Size",
+            "targets": [
+                {
+                    "expr": "elasticsearch_indices_store_size_bytes",
+                    "legendFormat": "{{cluster}}/{{index}}"
+                }
+            ]
+        },
+        {
+            "type": "graph",
+            "title": "Elasticsearch Query Rate",
+            "targets": [
+                {
+                    "expr": "rate(elasticsearch_indices_search_query_total[5m])",
+                    "legendFormat": "{{index}}"
+                }
+            ]
+        }
+    ]
+}

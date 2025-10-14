@@ -1,0 +1,43 @@
+{
+    "id": null,
+    "title": "Infrastructure Overview",
+    "schemaVersion": 36,
+    "version": 1,
+    "panels": [
+        {
+            "type": "graph",
+            "title": "CPU Usage",
+            "targets": [
+                {
+                    "expr": "100 - (avg by(instance)(irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+                    "legendFormat": "{{instance}}"
+                }
+            ],
+            "datasource": "Prometheus"
+        },
+        {
+            "type": "graph",
+            "title": "Memory Usage",
+            "targets": [
+                {
+                    "expr": "node_memory_Active_bytes / node_memory_MemTotal_bytes * 100",
+                    "legendFormat": "{{instance}}"
+                }
+            ]
+        },
+        {
+            "type": "graph",
+            "title": "Network Traffic",
+            "targets": [
+                {
+                    "expr": "rate(node_network_receive_bytes_total[5m])",
+                    "legendFormat": "RX {{instance}}"
+                },
+                {
+                    "expr": "rate(node_network_transmit_bytes_total[5m])",
+                    "legendFormat": "TX {{instance}}"
+                }
+            ]
+        }
+    ]
+}

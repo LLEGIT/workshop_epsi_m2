@@ -1,0 +1,248 @@
+# docker-compose.yml
+# Version: compose v2/v3 compatible
+version: "3.9"
+
+# Networks used for isolation
+networks:
+  web:
+    driver: bridge
+  backend:
+    driver: bridge
+  monitoring:
+    driver: bridge
+
+# Persistent volumes used by services
+volumes:
+  traefik_data:
+  glpi_data:
+  mariadb_data:
+  elastic_data:
+  cassandra_data:
+  prometheus_data:
+  grafana_data:
+  backups:
+
+services:
+  #################################################################
+  # Reverse proxy / WAF (Traefik) - front access and TLS termination
+  #################################################################
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--api.insecure=false"
+      - "--accesslog=true"
+      - "--log.level=INFO"
+      - "--certificatesresolvers.le.acme.tlschallenge=true"
+      - "--certificatesresolvers.le.acme.email=${TRAEFIK_ACME_EMAIL:-admin@example.com}"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_data:/letsencrypt
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.localhost`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+
+  ################################
+  # GLPI - Ticketing front-end
+  ################################
+  glpi:
+    image: diouxx/glpi:latest
+    container_name: glpi
+    restart: unless-stopped
+    depends_on:
+      - mariadb
+    environment:
+      - GLPI_DB_HOST=mariadb
+      - GLPI_DB_USER=${GLPI_DB_USER:-glpi}
+      - GLPI_DB_PASSWORD=${GLPI_DB_PASSWORD:-glpi_pass}
+      - GLPI_DB_NAME=${GLPI_DB_NAME:-glpidb}
+    volumes:
+      - glpi_data:/var/www/html
+      - ./docker/glpi/apache/glpi.conf:/etc/apache2/conf-available/glpi.conf:ro
+    networks:
+      - web
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.glpi.rule=Host(`${GLPI_HOST:-glpi.localhost}`)"
+      - "traefik.http.routers.glpi.entrypoints=websecure"
+      - "traefik.http.routers.glpi.tls.certresolver=le"
+
+  ################################
+  # MariaDB for GLPI
+  ################################
+  mariadb:
+    image: mariadb:10.5
+    container_name: mariadb
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root_pass}
+      - MYSQL_DATABASE=${GLPI_DB_NAME:-glpidb}
+      - MYSQL_USER=${GLPI_DB_USER:-glpi}
+      - MYSQL_PASSWORD=${GLPI_DB_PASSWORD:-glpi_pass}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  ################################
+  # Elasticsearch (single-node for dev/POC)
+  # For production: use 3+ nodes with proper discovery
+  ################################
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elastic_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - backend
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  ################################
+  # Cassandra (single-node for POC)
+  # For production: run 3+ nodes and set seeds accordingly
+  ################################
+  cassandra:
+    image: cassandra:4.1
+    container_name: cassandra
+    environment:
+      - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-BigDataCluster}
+      - CASSANDRA_NUM_TOKENS=256
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    ports:
+      - "9042:9042"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "nodetool", "status"]
+      interval: 60s
+      timeout: 20s
+      retries: 5
+
+  ################################
+  # Prometheus (collector)
+  ################################
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - prometheus_data:/prometheus
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+      - backend
+
+  ################################
+  # Grafana (dashboards)
+  ################################
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: grafana
+    depends_on:
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - web
+      - monitoring
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`${GRAFANA_HOST:-grafana.localhost}`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls.certresolver=le"
+
+  ################################
+  # Exporters (node_exporter & cadvisor) - mode global in production
+  ################################
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    restart: unless-stopped
+    networks:
+      - monitoring
+    ports:
+      - "9100:9100"
+    # In production deploy as daemonset / global on hosts
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    volumes:
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "8080:8080"
+    networks:
+      - monitoring
+
+  ################################
+  # Optional: blackbox exporter for synthetic checks
+  ################################
+  blackbox:
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox
+    ports:
+      - "9115:9115"
+    networks:
+      - monitoring
+
+  ################################
+  # Backup mover (optional helper) - uses rclone / restic in container
+  ################################
+  backup-agent:
+    image: alpine:3.18
+    container_name: backup_agent
+    command: ["sleep", "infinity"]
+    volumes:
+      - backups:/backups
+      - ./scripts/backup:/scripts:ro
+    networks:
+      - backend

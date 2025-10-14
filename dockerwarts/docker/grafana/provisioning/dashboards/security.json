@@ -1,0 +1,38 @@
+{
+    "id": null,
+    "title": "Security & WAF Overview",
+    "schemaVersion": 36,
+    "version": 1,
+    "panels": [
+        {
+            "type": "graph",
+            "title": "Blocked Requests by WAF",
+            "targets": [
+                {
+                    "expr": "increase(traefik_service_request_total{code=\"403\"}[5m])",
+                    "legendFormat": "Blocked Requests"
+                }
+            ]
+        },
+        {
+            "type": "graph",
+            "title": "HTTP Error Rate",
+            "targets": [
+                {
+                    "expr": "rate(traefik_service_request_total{code=~\"4..|5..\"}[5m])",
+                    "legendFormat": "{{service}}"
+                }
+            ]
+        },
+        {
+            "type": "table",
+            "title": "Top Suspicious IPs",
+            "targets": [
+                {
+                    "expr": "topk(10, increase(traefik_entrypoint_requests_total{code=\"403\"}[10m]))",
+                    "legendFormat": "{{client_ip}}"
+                }
+            ]
+        }
+    ]
+}
