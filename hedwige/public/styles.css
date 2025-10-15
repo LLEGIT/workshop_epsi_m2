@@ -1,0 +1,13 @@
+body {
+    font-family: sans-serif;
+}
+
+input,
+textarea {
+    display: block;
+    margin-bottom: 8px;
+}
+
+button {
+    cursor: pointer;
+}
