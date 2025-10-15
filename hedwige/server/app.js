@@ -5,6 +5,7 @@ const path = require('path');
 
 const authRoutes = require('./routes/auth');
 const mailRoutes = require('./routes/mail');
+const youtubeRoutes = require('./routes/youtube');
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 app.use('/auth', authRoutes);
 app.use('/mail', mailRoutes);
+app.use('/youtube', youtubeRoutes);
 
 module.exports = app;
 

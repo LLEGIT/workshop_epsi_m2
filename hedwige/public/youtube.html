@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hedwige - YouTube</title>
+    <link href="css/output.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-50 min-h-screen flex flex-col font-sans text-gray-900">
+    <header class="bg-white shadow-md py-4 px-6 flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-primary">Vidéos YouTube likées</h1>
+        <div class="flex space-x-4">
+            <a href="/mail.html"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition">
+                Retour aux mails
+            </a>
+            <button id="logoutBtn"
+                class="px-4 py-2 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-600 transition">
+                Déconnexion
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow p-6">
+        <div id="loader"
+            class="w-12 h-12 border-4 border-gray-200 border-t-4 border-t-primary rounded-full animate-spin mx-auto my-6">
+        </div>
+        <ul id="videoList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></ul>
+    </main>
+
+    <footer class="bg-white text-center py-3 border-t border-gray-200 text-sm">
+        &copy; 2025 Hedwige
+    </footer>
+
+    <script>
+        const videoList = document.getElementById('videoList');
+        const loader = document.getElementById('loader');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        async function fetchLikedVideos() {
+            loader.style.display = 'block';
+            try {
+                const res = await fetch('/youtube/liked', { credentials: 'include' });
+                if (!res.ok) throw new Error('Non connecté à YouTube');
+                const videos = await res.json();
+                loader.style.display = 'none';
+                videoList.innerHTML = '';
+
+                if (!videos.length) {
+                    videoList.innerHTML = '<p class="text-gray-500 text-center col-span-full">Aucune vidéo likée trouvée.</p>';
+                    return;
+                }
+
+                videos.forEach(video => {
+                    const li = document.createElement('li');
+                    li.className = 'bg-white rounded-lg shadow-md overflow-hidden';
+                    li.innerHTML = `
+                        <a href="${video.url}" target="_blank">
+                            <img src="${video.thumbnail}" alt="${video.title}" class="w-full h-48 object-cover">
+                            <div class="p-4">
+                                <h3 class="font-semibold text-gray-900">${video.title}</h3>
+                            </div>
+                        </a>
+                    `;
+                    videoList.appendChild(li);
+                });
+            } catch (err) {
+                loader.style.display = 'none';
+                videoList.innerHTML = `<p class="text-red-500 text-center col-span-full">${err.message}</p>`;
+            }
+        }
+
+        logoutBtn.addEventListener('click', async () => {
+            await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
+            window.location.href = '/';
+        });
+
+        window.addEventListener('load', fetchLikedVideos);
+    </script>
+</body>
+
+</html>
