@@ -38,7 +38,7 @@ jobs:
         working-directory: ./hedwige
 
       - name: Build Tailwind CSS
-        run: npx tailwindcss -i ./public/css/tailwind.css -o ./public/css/output.css --minify
+        run: npx tailwindcss -i ./src/input.css -o ./public/css/output.css --minify
         working-directory: ./hedwige
 
       - name: Run backend tests (Jest)
