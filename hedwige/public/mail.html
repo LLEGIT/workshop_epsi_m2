@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="styles.css" rel="stylesheet">
+    <title>Hedwige Mail - Boîte de réception</title>
+</head>
+
+<body class="bg-gray-100 p-4">
+    <h1 class="text-xl font-bold mb-4">Boîte de réception</h1>
+
+    <form id="sendMailForm" class="mb-4">
+        <input type="email" id="to" placeholder="Destinataire" class="border p-2 mb-2 w-full">
+        <input type="text" id="subject" placeholder="Sujet" class="border p-2 mb-2 w-full">
+        <textarea id="body" placeholder="Message" class="border p-2 mb-2 w-full"></textarea>
+        <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded">Envoyer</button>
+    </form>
+
+    <div id="notifications" class="mb-4"></div>
+    <ul id="inbox" class="list-disc pl-5"></ul>
+
+    <script>
+        async function loadInbox() {
+            const res = await fetch('/mail/inbox');
+            const mails = await res.json();
+            const inbox = document.getElementById('inbox');
+            inbox.innerHTML = '';
+            mails.forEach(mail => {
+                const li = document.createElement('li');
+                li.textContent = `${mail.from} - ${mail.subject}: ${mail.body}`;
+                inbox.appendChild(li);
+            });
+        }
+
+        document.getElementById('sendMailForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const to = document.getElementById('to').value;
+            const subject = document.getElementById('subject').value;
+            const body = document.getElementById('body').value;
+            const res = await fetch('/mail/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to, subject, body })
+            });
+            const result = await res.json();
+            const notif = document.getElementById('notifications');
+            notif.textContent = result.success ? 'Email envoyé !' : result.error;
+            loadInbox();
+        });
+
+        loadInbox();
+    </script>
+</body>
+
+</html>
