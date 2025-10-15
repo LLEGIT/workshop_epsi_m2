@@ -14,6 +14,6 @@ describe('Frontend index.html', () => {
         const dom = new JSDOM(html, { runScripts: "outside-only" });
         const button = dom.window.document.querySelector('a');
         expect(button).not.toBeNull();
-        expect(button.textContent).toContain('Connexion Microsoft');
+        expect(button.textContent).toContain('Se connecter avec Microsoft');
     });
 });

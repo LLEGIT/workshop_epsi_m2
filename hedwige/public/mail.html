@@ -4,53 +4,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="styles.css" rel="stylesheet">
-    <title>Hedwige Mail - Boîte de réception</title>
+    <title>Hedwige - Boîte de réception</title>
+    <link href="css/output.css" rel="stylesheet">
 </head>
 
-<body class="bg-gray-100 p-4">
-    <h1 class="text-xl font-bold mb-4">Boîte de réception</h1>
+<body class="bg-gray-50 flex flex-col min-h-screen font-sans text-gray-900">
+    <header class="bg-white shadow-md py-4 flex justify-between items-center px-6">
+        <h1 class="text-2xl font-bold text-primary">Boîte de réception</h1>
+        <div class="flex space-x-4">
+            <button id="logoutBtn"
+                class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition">
+                Déconnexion
+            </button>
 
-    <form id="sendMailForm" class="mb-4">
-        <input type="email" id="to" placeholder="Destinataire" class="border p-2 mb-2 w-full">
-        <input type="text" id="subject" placeholder="Sujet" class="border p-2 mb-2 w-full">
-        <textarea id="body" placeholder="Message" class="border p-2 mb-2 w-full"></textarea>
-        <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded">Envoyer</button>
-    </form>
+            <a href="https://reseau-cd.360learning.com/" target="_blank"
+                class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition">
+                360Learning
+            </a>
 
-    <div id="notifications" class="mb-4"></div>
-    <ul id="inbox" class="list-disc pl-5"></ul>
+        </div>
+    </header>
+
+    <main class="flex-grow p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Formulaire d'envoi -->
+        <section class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-lg font-semibold mb-4">Envoyer un nouveau mail</h2>
+            <form id="mailForm" class="flex flex-col space-y-4">
+                <input type="email" id="to" placeholder="Destinataire" required
+                    class="p-3 border rounded-lg focus:ring-2 focus:ring-primary">
+                <input type="text" id="subject" placeholder="Objet" required
+                    class="p-3 border rounded-lg focus:ring-2 focus:ring-primary">
+                <textarea id="body" rows="5" placeholder="Votre message..." required
+                    class="p-3 border rounded-lg focus:ring-2 focus:ring-primary"></textarea>
+                <button type="submit"
+                    class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition">
+                    Envoyer
+                </button>
+                <p id="status" class="text-sm"></p>
+            </form>
+        </section>
+
+        <!-- Liste des mails -->
+        <section class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-lg font-semibold mb-4">Derniers mails</h2>
+            <div id="loader"
+                class="w-12 h-12 border-4 border-gray-200 border-t-4 border-t-primary rounded-full animate-spin mx-auto my-4">
+            </div>
+            <div id="mailList" class="flex flex-col gap-4"></div>
+            <button id="refreshBtn"
+                class="mt-4 px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition">
+                Actualiser
+            </button>
+
+        </section>
+    </main>
+
+    <footer class="bg-white text-center py-3 text-sm border-t border-gray-200">
+        &copy; 2025 Hedwige
+    </footer>
 
     <script>
-        async function loadInbox() {
-            const res = await fetch('/mail/inbox');
-            const mails = await res.json();
-            const inbox = document.getElementById('inbox');
-            inbox.innerHTML = '';
-            mails.forEach(mail => {
-                const li = document.createElement('li');
-                li.textContent = `${mail.from} - ${mail.subject}: ${mail.body}`;
-                inbox.appendChild(li);
-            });
+        const mailList = document.getElementById('mailList');
+        const loader = document.getElementById('loader');
+        const mailForm = document.getElementById('mailForm');
+        const status = document.getElementById('status');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        async function fetchMails() {
+            loader.style.display = 'block';
+            mailList.innerHTML = '';
+            try {
+                const res = await fetch('/mail/inbox', { credentials: 'include' });
+                const mails = await res.json();
+                loader.style.display = 'none';
+                if (!mails.length) {
+                    mailList.innerHTML = '<p class="text-gray-500 text-sm">Aucun mail trouvé.</p>';
+                    return;
+                }
+                mails.forEach(m => {
+                    const div = document.createElement('div');
+                    div.className = 'p-4 bg-gray-50 border rounded-lg';
+                    div.innerHTML = `
+            <h3 class="text-primary font-semibold">${m.subject}</h3>
+            <p class="text-sm"><strong>De :</strong> ${m.from}</p>
+            <p class="text-sm">${m.snippet}</p>
+            <p class="text-xs text-gray-500">${new Date(m.receivedDateTime).toLocaleString()}</p>
+          `;
+                    mailList.appendChild(div);
+                });
+            } catch {
+                loader.style.display = 'none';
+                mailList.innerHTML = '<p class="text-red-500 text-sm">Erreur de chargement des mails.</p>';
+            }
         }
 
-        document.getElementById('sendMailForm').addEventListener('submit', async (e) => {
+        async function sendMail(e) {
             e.preventDefault();
-            const to = document.getElementById('to').value;
-            const subject = document.getElementById('subject').value;
-            const body = document.getElementById('body').value;
-            const res = await fetch('/mail/send', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ to, subject, body })
-            });
-            const result = await res.json();
-            const notif = document.getElementById('notifications');
-            notif.textContent = result.success ? 'Email envoyé !' : result.error;
-            loadInbox();
+            status.textContent = 'Envoi en cours...';
+            const data = {
+                to: document.getElementById('to').value,
+                subject: document.getElementById('subject').value,
+                body: document.getElementById('body').value,
+            };
+            try {
+                const res = await fetch('/mail/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(data),
+                });
+                if (res.ok) {
+                    status.textContent = '✅ Mail envoyé avec succès !';
+                    mailForm.reset();
+                    fetchMails();
+                } else {
+                    status.textContent = '❌ Erreur lors de l’envoi.';
+                }
+            } catch {
+                status.textContent = '❌ Erreur de connexion.';
+            }
+        }
+
+        logoutBtn.addEventListener('click', async () => {
+            await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
+            window.location.href = '/';
         });
 
-        loadInbox();
+        refreshBtn.addEventListener('click', fetchMails);
+        mailForm.addEventListener('submit', sendMail);
+        window.addEventListener('load', fetchMails);
     </script>
 </body>
 

@@ -4,13 +4,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="styles.css" rel="stylesheet">
-    <title>Hedwige Mail</title>
+    <title>Hedwige - Accueil</title>
+    <link href="css/output.css" rel="stylesheet">
 </head>
 
-<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen">
-    <h1 class="text-2xl font-bold mb-4">Hedwige Mail</h1>
-    <a href="/auth/login" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Connexion Microsoft</a>
+<body class="bg-gray-50 flex flex-col min-h-screen font-sans text-gray-900">
+    <header class="bg-white shadow-md py-4">
+        <h1 class="text-center text-2xl font-bold text-primary">Hedwige</h1>
+    </header>
+
+    <main class="flex-grow flex flex-col items-center justify-center px-4 text-center space-y-6">
+        <h2 class="text-xl font-semibold">Messagerie Outlook simplifiée</h2>
+        <p>Connectez-vous avec votre compte étudiant Microsoft pour envoyer et recevoir vos mails en toute sécurité.</p>
+        <a href="/auth/login"
+            class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition">
+            Se connecter avec Microsoft
+        </a>
+    </main>
+
+    <footer class="bg-white text-center py-3 text-sm border-t border-gray-200">
+        &copy; 2025 Hedwige
+    </footer>
 </body>
 
 </html>
