@@ -17,9 +17,6 @@ jobs:
         node-version: [20.x]
 
     steps:
-      - name: Change to /hedwige directory
-        run: cd hedwige
-
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -32,21 +29,28 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-node-${{ hashFiles('hedwige/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
 
       - name: Install dependencies
         run: npm install
+        working-directory: ./hedwige
 
       - name: Build Tailwind CSS
         run: npx tailwindcss -i ./public/css/tailwind.css -o ./public/css/output.css --minify
+        working-directory: ./hedwige
 
-      - name: Run tests (Jest/Vitest)
+      - name: Run backend tests (Jest)
         run: npm test
+        working-directory: ./hedwige
         env:
           NODE_ENV: test
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           REDIRECT_URI: ${{ secrets.REDIRECT_URI }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+
+      - name: Run frontend tests (Vitest)
+        run: npx vitest run
+        working-directory: ./hedwige
