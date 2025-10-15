@@ -41,7 +41,7 @@ jobs:
         run: npx tailwindcss -i ./src/input.css -o ./public/css/output.css --minify
         working-directory: ./hedwige
 
-      - name: Run backend tests (Jest)
+      - name: Run tests
         run: npm test
         working-directory: ./hedwige
         env:
@@ -50,7 +50,3 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           REDIRECT_URI: ${{ secrets.REDIRECT_URI }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
-
-      - name: Run frontend tests (Vitest)
-        run: npx vitest run
-        working-directory: ./hedwige
