@@ -1,4 +1,3 @@
-require('dotenv').config()
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
@@ -21,7 +20,10 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/auth', authRoutes);
 app.use('/mail', mailRoutes);
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
 module.exports = app;
+
+// Démarrage du serveur uniquement si lancé directement
+if (require.main === module) {
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
