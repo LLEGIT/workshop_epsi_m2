@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+python-multipart
+openai            # if using OpenAI API
+openai-whisper    # optional for local
+pyttsx3

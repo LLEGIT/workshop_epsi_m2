@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Magic Spell Voice Recognition</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #0b1020;
+            color: #eee;
+        }
+
+        .card {
+            background: linear-gradient(180deg, #111427, #0b1020);
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+            width: 420px;
+            text-align: center;
+        }
+
+        button {
+            padding: 12px 18px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .recording {
+            background: linear-gradient(90deg, #ff6b6b, #ff9f43);
+            color: #120205;
+        }
+
+        .spark {
+            width: 100%;
+            height: 120px;
+            pointer-events: none;
+            margin-top: 12px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 10px;
+        }
+
+        .spark.fire {
+            background: radial-gradient(circle at 10% 20%, rgba(255, 255, 170, 0.15), transparent 10%);
+        }
+
+        .message {
+            margin-top: 12px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <script type="text/javascript">
+        const { useState, useRef } = React;
+
+        function App() {
+            const [recording, setRecording] = useState(false);
+            const [message, setMessage] = useState("Appuyez sur 'Lancer le sort' et prononcez une formule.");
+            const [effect, setEffect] = useState(null);
+            const mediaRecorderRef = useRef(null);
+            const chunksRef = useRef([]);
+
+            async function startRecording() {
+                setMessage("📢 Enregistrement... prononcez votre sort maintenant !");
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const mediaRecorder = new MediaRecorder(stream);
+                mediaRecorderRef.current = mediaRecorder;
+                chunksRef.current = [];
+                mediaRecorder.ondataavailable = e => chunksRef.current.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+                    setMessage("🔮 Envoi au magicien (serveur)...");
+                    const fd = new FormData();
+                    fd.append("audio", blob, "spell.webm");
+                    // optional user id
+                    fd.append("user_id", "player-1");
+                    try {
+                        const res = await fetch("http://localhost:8000/api/transcribe", {
+                            method: "POST",
+                            body: fd
+                        });
+                        const data = await res.json();
+                        if (data.recognized) {
+                            setEffect(data.spell);
+                            setMessage("✅ " + data.message);
+                            // visual flash
+                            flashSuccess();
+                        } else {
+                            setEffect(null);
+                            setMessage("❌ Inconnu du registre magique.");
+                            flashFailure();
+                        }
+                    } catch (err) {
+                        setMessage("Erreur réseau: " + err.message);
+                    }
+                };
+                mediaRecorder.start();
+                setRecording(true);
+            }
+
+            function stopRecording() {
+                if (mediaRecorderRef.current) {
+                    mediaRecorderRef.current.stop();
+                    setRecording(false);
+                    setMessage("Traitement...");
+                }
+            }
+
+            function flashSuccess() {
+                // small DOM-driven visual effect
+                document.body.style.transition = "background 0.6s";
+                document.body.style.background = "radial-gradient(circle at 50% 20%, rgba(255,240,180,0.12), #0b1020)";
+                setTimeout(() => document.body.style.background = "", 700);
+            }
+            function flashFailure() {
+                document.body.style.transition = "background 0.6s";
+                document.body.style.background = "radial-gradient(circle at 50% 50%, rgba(255,80,80,0.08), #0b1020)";
+                setTimeout(() => document.body.style.background = "", 700);
+            }
+
+            return React.createElement("div", { className: "card" },
+                React.createElement("h2", null, "🔮 Magic Spell Voice Recognition"),
+                React.createElement("p", null, "Prononce un sort de l'univers d'Harry Potter (ex: Lumos, Accio...)"),
+                React.createElement("div", null,
+                    recording
+                        ? React.createElement("button", { onClick: stopRecording, className: "recording" }, "Arrêter l'enregistrement")
+                        : React.createElement("button", { onClick: startRecording }, "Lancer le sort")
+                ),
+                React.createElement("div", { className: "spark " + (effect ? "fire" : "") }, effect ? React.createElement("h3", null, "✨ " + effect) : null),
+                React.createElement("div", { className: "message" }, message)
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+    </script>
+</body>
+
+</html>
